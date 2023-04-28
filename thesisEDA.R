@@ -7,6 +7,10 @@ CairoWin()
 # Exploratory Data Analysis for USOC individual responses from 2009 - 2022
 # Produces some summary tables, some group averages and some charting for headline evolutions
 
+## Add in data 
+
+usoc2 = read_csv("https://raw.githubusercontent.com/Centwistle/phdch1/main/usoc_individuals.csv")
+
 # Summary table of values
 
 # Adding in Country Region Variable based on NUTS2 codes
