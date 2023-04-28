@@ -1,3 +1,6 @@
+install.packages("tidyverse")
+install.packages("Cairo")
+
 library(tidyverse)
 library(ggplot2)
 library(Cairo)
@@ -47,6 +50,7 @@ usoc %>%
   filter(ccare == 1 | ccare == 2) %>%
   group_by(intdaty_dv, gor_dv) %>%
   mutate(prop = 1 - (mean(ccare) - 1)) %>%
+  mutate(gor_dv = as.factor(gor_dv)) %>%
   summarise(avg_prop = mean(prop)) %>%
   ggplot(aes(x = intdaty_dv, y = avg_prop, group = gor_dv)) + geom_line(aes(color = gor_dv)) + scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
   labs(title = "Rates of Childcare Utilisation Across NUTS2 Region", subtitle = "% of Positive Respondents (2009 - 2020")
@@ -64,13 +68,27 @@ usoc %>%
   summarise(avg_prop = mean(prop)) %>%
   ggplot(aes(x = intdaty_dv, y = avg_prop, group = Region)) + geom_line(aes(color = Region)) + scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
   labs(title = "Rates of Childcare Utilisation Across UK Home Nations", subtitle = "% of Positive Respondents (2009 - 2020")
+
+## Repeats above but adds in different coloured regression lines that map to the nation geom_lines #
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(gor_dv >= 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  group_by(intdaty_dv, Region) %>%
+  mutate(prop = 1 - (mean(ccare) - 1)) %>%
+  summarise(avg_prop = mean(prop)) %>%
+  ggplot(aes(x = intdaty_dv, y = avg_prop, group = Region)) + geom_line(aes(color = Region)) + scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
+  stat_smooth(method = "lm", formula = y ~ x, se = FALSE, aes(color = Region)) +
+  labs(title = "Rates of Childcare Utilisation Across UK Home Nations", subtitle = "% of Positive Respondents (2009 - 2020")
   
+
 
 # Investigating seesawing
 
 usoc_test = usoc %>%
   filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
-  filter(Region == "NI") %>%
+  filter(Region == "England") %>%
   filter(ccare == 1 | ccare == 2) %>%
   group_by(intdaty_dv) %>%
   mutate(prop = 1 - (mean(ccare) - 1)) %>%
@@ -107,4 +125,3 @@ usoc %>%
   filter(ccare == 1 | ccare == 2) %>%
   mutate(ccare = as.factor(ccare)) %>%
   ggplot(aes(x = jbhrs, group = ccare, color = ccare)) + geom_histogram(fill = "azure")
-
