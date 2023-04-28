@@ -9,7 +9,7 @@ CairoWin()
 
 ## Add in data 
 
-usoc2 = read_csv("https://raw.githubusercontent.com/Centwistle/phdch1/main/usoc_individuals.csv")
+usoc = read_csv("https://raw.githubusercontent.com/Centwistle/phdch1/main/usoc_individuals.csv")
 
 # Summary table of values
 
