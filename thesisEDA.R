@@ -125,3 +125,38 @@ usoc %>%
   filter(ccare == 1 | ccare == 2) %>%
   mutate(ccare = as.factor(ccare)) %>%
   ggplot(aes(x = jbhrs, group = ccare, color = ccare)) + geom_histogram(fill = "azure")
+
+# Above but with two vertical lines for mean values
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(jbhrs > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(ccare = as.factor(ccare)) %>%
+  ggplot(aes(x = jbhrs, group = ccare, color = ccare)) + geom_histogram(fill = "azure") +
+  geom_vline(aes(xintercept = mean(jbhrs[ccare == 1]), color = ccare[1]), linetype = "dashed") +
+  geom_vline(aes(xintercept = mean(jbhrs[ccare == 2]), color = ccare), linetype = "dashed") +
+  labs(title = "Distribution of hours worked (n)", subtitle = "Differentiated between users of childcare (1 - yes, 2 - no)")
+  
+# Above repeated but with non parents added in 
+
+usoc %>% 
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & jbhrs > 0) %>%
+  filter(ccare == 1 | ccare == 2 | ccare == -8) %>%
+  group_by(ccare) %>%
+  summarise(mean_hrs_worked = mean(jbhrs)) 
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(jbhrs > 0) %>%
+  filter(ccare == -8 | ccare == 1 | ccare == 2) %>%
+  mutate(ccare = case_when(ccare < 0 ~ 3)) %>%
+  mutate(ccare = as.factor(ccare)) %>%
+  ggplot(aes(x = jbhrs, group = ccare, color = ccare)) + geom_histogram(fill = "azure") +
+  geom_vline(aes(xintercept = 33.6), linetype = "dashed") +
+  geom_vline(aes(xintercept = 27.7), linetype = "dashed") +
+  geom_vline(aes(xintercept = 26.4), linetype = "dashed")
+
+
+
+
