@@ -1,0 +1,222 @@
+---
+title: "ChildcareEDA"
+author: "Craig Entwistle"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    theme: readable
+---
+
+# Thesis Ch1. Exploratory Data Analysis
+#### Craig Entwistle
+
+Activating required packages. 
+
+```{r echo=TRUE, warning = FALSE, message=FALSE}
+library(tidyverse)
+library(ggplot2)
+```
+
+## Importing data and summary
+
+Importing data from GitHub and providing top-level statistics. 
+
+This data is from Understanding Society (2009 - 2022) and has been merged together across waves for individual responses for a select related variables for childcare and labour market indicators.
+
+```{r}
+usoc = read_csv("https://raw.githubusercontent.com/Centwistle/phdch1/main/usoc_individuals.csv")
+
+usoc %>% select(pidp, age_dv, sex_dv, ccare, jbhrs, jbft_dv) %>% summary(digits = 4)
+
+```
+
+```{r include=FALSE}
+usoc = usoc %>%
+        mutate(Region = case_when(gor_dv < 10 & gor_dv >0 ~ "England", 
+                                  gor_dv == 10 ~ "Wales",
+                                  gor_dv == 11 ~ "Scotland",
+                                  gor_dv == 12 ~ "NI"))
+```
+
+
+Note to self: variable codings need tidying up for inapplicables / NAs etc. Also maybe find nicer table formatting 
+
+## Exploring Childcare Variables Within the Data
+
+First I look at rates of childcare utilisation across the whole of the UK for the time period covered (2009 - 2022). The code below filters out non-applicable variables (such as for where the year value was inapplicable), selects for parents only through those who answer positive **or** negative for whether they use childcare. Next it groups by year and calculates the average proportion (0 - 1) of parent responders who answered that they *did* use childcare in that given year. This is then piped into a line chart.
+
+```{r warning=FALSE}
+usoc %>%
+  filter(intdaty_dv > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  group_by(intdaty_dv) %>%
+  mutate(prop = 1 - (mean(ccare) - 1)) %>%
+  summarise(avg_prop = mean(prop)) %>%
+  ggplot(aes(x = intdaty_dv, y = avg_prop)) + geom_line() + scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
+  labs(title = "Rates of Childcare Utilisation in the UK", subtitle = "% of Positive Respondents (2009 - 2022)")
+```
+
+At first glance from the chart above, the trend of overall +% utilisation is flat over most of the time period until 2020 when it takes a significant downward swing downwards. However this is highly aggregated data and may be caused due to the data themselves. I investigate this next by disaggregating the UK into NUTS2 regions and repeat the above chart. 
+
+Initially, I look at the number of survey respondents within each year to check whether the underlying number of respondents is enought to draw any inferences from. 
+
+```{r warning=FALSE, message=FALSE}
+usoc %>%
+  filter(intdaty_dv > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  group_by(intdaty_dv, Region) %>%
+  mutate(prop = 1 - (mean(ccare) - 1)) %>%
+  summarise(avg_prop = mean(prop), n = n_distinct(pidp))
+  
+```
+
+The above shows that the number of overall respondents fell dramatically in 2022, and was substantially below average in 2021. This may partially explain why the trend shows such dramatic swings in later years, and so from this point onwards I trim 2021 and 2022.
+
+```{r warning=FALSE, message=FALSE}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(gor_dv >= 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  group_by(intdaty_dv, gor_dv) %>%
+  mutate(prop = 1 - (mean(ccare) - 1)) %>%
+  mutate(gor_dv = as.factor(gor_dv)) %>%
+  summarise(avg_prop = mean(prop)) %>%
+  ggplot(aes(x = intdaty_dv, y = avg_prop, group = gor_dv)) + geom_line(aes(color = gor_dv)) + scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
+  labs(title = "Rates of Childcare Utilisation Across NUTS2 Region", subtitle = "% of Positive Respondents (2009 - 2020)")
+```
+
+The above shows the same metric (proportion of parents answering positively to using childcare) over the same time period but disaggregated into the UK's constitutent regions. Unsurprisingly there is variation within regions as to the overall proportion of users of childcare, again unsurprisingly with London (gor_dv - 7) being the lowest among all NUTS2 regions. Scotland has the highest proportion (gor_dv - 11). 
+
+To make differences slightly clearer - I aggregate English NUTS2 regions into one national variable, and compare against the other UK home regions below. Left hand chart shows just the observation lines, right hand chart layers over a linear trend line (both shown for clarity as trendlines obscure the individual observations somewhat).
+
+```{r message=FALSE, warning=FALSE, fig.show='hold', out.width="50%"}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(gor_dv >= 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  group_by(intdaty_dv, Region) %>%
+  mutate(prop = 1 - (mean(ccare) - 1)) %>%
+  summarise(avg_prop = mean(prop)) %>%
+  ggplot(aes(x = intdaty_dv, y = avg_prop, group = Region)) + geom_line(aes(color = Region)) + scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+  labs(title = "Rates of Childcare Utilisation Across UK Home Nations", subtitle = "% of Positive Respondents (2009 - 2020)")
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(gor_dv >= 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  group_by(intdaty_dv, Region) %>%
+  mutate(prop = 1 - (mean(ccare) - 1)) %>%
+  summarise(avg_prop = mean(prop)) %>%
+  ggplot(aes(x = intdaty_dv, y = avg_prop, group = Region)) + geom_line(aes(color = Region)) + scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
+  stat_smooth(method = "lm", formula = y ~ x, se = FALSE, aes(color = Region)) +
+  labs(title = "Rates of Childcare Utilisation Across UK Home Nations", subtitle = "% of Positive Respondents (2009 - 2020)")
+```
+
+Here we observe both the heterogenous levels of childcare utilisation and the varying trends across the countries. 
+
+As in the NUTS2 level of disaggregation, Scotland both begins and ends the series with the highest proportion of respondents answering that they use childcare, while England begins as the second highest and then drops down to bottom by 2020. Wales and Northern Ireland both begin with relatively similar proportions in 2009 but end in 2020 having increased their values by quite some amount. 
+
+Turning to the right-hand chart, this more clearly shows the trend differences in proportions of positive respondents. Scotland, NI and particularly Wales demonstrate strong upward trends in childcare utilisation from 2009 to 2020. England bucks the trend with relatively flat line (very slightly upward sloping but muted compared to the others).
+
+Note: large year-on-year volatility in proportion for Scotland, Wales and NI. This is not present for England, however the England variable was generated by taking an (non-weighted) average of all other English regions - so likely will have smoothed out volatility from those NUTS2 regions. 
+
+This needs further investigation. Checking simple correlation of year-wise and region-wise individual sample sizes did not yield any correlation between survey sample and volatility. 
+
+## Looking at Weekly Hours Worked Responses
+
+Now I turn to weekly hours worked within the data set - looking at data characteristics before turning to the interaction of hours worked in relation to the childcare variables. 
+
+First I generate simple hours worked comparisons between both parents using childcare, parents not using childcare and non-parents who are in work of some kind. 
+
+```{r warning=FALSE, message=FALSE}
+
+usoc %>% 
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & jbhrs > 0) %>%
+  filter(ccare == 1 | ccare == 2 | ccare == -8) %>%
+  group_by(ccare) %>%
+  summarise(mean_hrs_worked = mean(jbhrs), median_hrs_worked = median(jbhrs))
+```
+
+In the above -8 corresponds to non-parents who work, 1 to parents using childcare of some kind and 2 to parents who do not use childcare. 
+
+As we can see, non-parents work on average around ~6-7 hours more per work than parents at 33.6 hrs/week. Parents utilising childcare work on average 27.7 hours per week, and non-childcare using parents work around 26.4 hours per week; meaning that childcare using parents work on average 1.2 hours *more* than non-childcare using parents. 
+
+Using median values to account for potential outliers (more below) - shows a slightly different picture. Non-parents work significantly more, approaching average full-time hours, while the gap for parents remains relatively similar. Childcare-using parents work 28 hours per week and non-using parents work 26 hours per week (2hr per week difference).
+
+To visualise more clearly, I plot the above onto a histogram of hours worked below, with proportions of those hours worked differentiated between childcare using parents and not as well as the average values plotted in as a vertical line. 
+
+Note: Charting with non-parents included broke the chart for some reason, needs implementing. 
+
+```{r warning=FALSE, message=FALSE}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(jbhrs > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(ccare = as.factor(ccare)) %>%
+  ggplot(aes(x = jbhrs, group = ccare, color = ccare)) + geom_histogram(fill = "azure") +
+  geom_vline(aes(xintercept = mean(jbhrs[ccare == 1]), color = ccare[1]), linetype = "dashed") +
+  geom_vline(aes(xintercept = mean(jbhrs[ccare == 2]), color = ccare), linetype = "dashed") +
+  labs(title = "Distribution of hours worked (n)", subtitle = "Differentiated between users of childcare (1 - yes, 2 - no)")
+```
+
+The above shows the distribution of weekly hours worked for all respondents across waves, from 2009 to 2020. Unsurprisingly we see a bimodal distribution - with clumping of responses around the 20-25 hours worked per week area and at 40 hours worked per week, corresponding to part-time and full-time workers respectively.
+
+The distribution is also relatively right-skewed due to small numbers of values expressed further along hours worked - to better get an idea of how these vary and the degree to which they are outliers (as they are not easily identified on the histogram) I plot a boxplot and a violin plot of hours worked differentiated by childcare below.
+
+```{r warning=FALSE, message=FALSE, fig.show='hold', out.width="50%"}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(jbhrs > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(ccare = as.factor(ccare)) %>%
+  ggplot(aes(ccare, jbhrs, group = ccare)) + geom_boxplot() +
+  labs(title = "Boxplot of Weekly Hours Worked Differentiated by Childcare Use", subtitle = "1 - Childcare, 2 - No Childcare")
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(jbhrs > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(ccare = as.factor(ccare)) %>%
+  ggplot(aes(ccare, jbhrs, group = ccare)) + geom_violin() +
+  labs(title = "Violin Chart of Weekly Hours Worked Differentiated by Childcare Use", subtitle = "1 - Childcare, 2 - No Childcare")
+```
+
+Given that the data exhibit bimodal distributionsm, I also add in a violin plot to better demonstrate the non-normal distribution. However, the boxplot clearly shows potential outliers. While there are a number of individuals who work very few hours, this appears normal - there are a number of observations approaching 100 hours worked per week. A quick scan of the data (below) shows how high some of the responses get.
+
+```{r}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(jbhrs > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  arrange(desc(jbhrs)) %>%
+  select(pidp, intdaty_dv, age_dv, jbhrs) %>%
+  head(10)
+```
+
+Some responses indicate 97 hours worked per week (19.4 hrs, 16.1 hrs and 14 hrs worked per day on a 5 day, 6 day and 7 day week respectively). This suggests that some of these responses may be outliers - although not enough information is present in this dataset to immediately rule them out. 
+
+It is feasible that some professions may actually work such long hours. Understanding Society does include what sector of work the individual is employed in (by SIC code), although it is not included within this slice of the data. For example, it is not inconceivable that someone working within finance may work those hours. 
+
+Next, I turn to the proportion of those working certain hours who use childcare or not to get an idea of whether the proportion of childcare using parents increases or decreases as hours work changed.
+
+Note: for some reason this did not turn out to be possible using a histogram so this had to be jerry-rigged through a bar chart. 
+
+```{r warning=FALSE, message=FALSE}
+ usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(jbhrs > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(hrs_dec = ntile(jbhrs, 10), ccare = as.factor(ccare)) %>%
+  mutate(hrs_dec = as.factor(hrs_dec)) %>%
+  group_by(hrs_dec) %>%
+  mutate(prop = 1 - (mean(ccare) - 1), n = n_distinct(pidp)) %>%
+  ggplot(aes(x = hrs_dec, y = n, fill = ccare)) + geom_col() +
+  labs(title = "Hours Worked of Parents by Hrs-Worked Decile and Childcare Status", subtitle = "1 - Childcare, 2 - No Childcare")
+```
+
+Note: for the above to work, hours worked had to be transformed into a discrete variable. In this case, I opted for deciles - so each bar represents 10% of working parents by their hours worked ordered by hours worked. Y-axis represents the number of observations for each decile, and the fill represents the proportion of that decile using or not using childcare. 
+
+As we can see from the above - as hours worked increases those using childcare also increases. Red generally outweighs the blue in the lower declies but increases as a proportion the higher hours go. 
+
+While not robust - it does suggest that childcare usage allows parents to work more hours. 
