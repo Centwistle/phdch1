@@ -211,7 +211,7 @@ Note: for some reason this did not turn out to be possible using a histogram so 
   mutate(hrs_dec = as.factor(hrs_dec)) %>%
   group_by(hrs_dec) %>%
   mutate(prop = 1 - (mean(ccare) - 1), n = n_distinct(pidp)) %>%
-  ggplot(aes(x = hrs_dec, y = n, fill = ccare)) + geom_col() +
+  ggplot(aes(x = hrs_dec, y = 100, fill = ccare)) + geom_col() +
   labs(title = "Hours Worked of Parents by Hrs-Worked Decile and Childcare Status", subtitle = "1 - Childcare, 2 - No Childcare")
 ```
 
@@ -220,3 +220,56 @@ Note: for the above to work, hours worked had to be transformed into a discrete 
 As we can see from the above - as hours worked increases those using childcare also increases. Red generally outweighs the blue in the lower declies but increases as a proportion the higher hours go. 
 
 While not robust - it does suggest that childcare usage allows parents to work more hours. 
+
+Below I repeat the exercise but explicitly using the full-time and part-time variables in Understanding Society.
+
+```{r warning=FALSE, message=FALSE}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  filter(jbft_dv == 1 | jbft_dv == 2 | jbft_dv == -8) %>%
+  mutate(jbft_dv = as.factor(jbft_dv)) %>%
+  group_by(jbft_dv) %>%
+  mutate(prop = 1 - (mean(ccare) - 1), n = n_distinct(pidp)) %>%
+  summarise(avg_prop = mean(prop))
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  filter(jbft_dv == 1 | jbft_dv == 2 | jbft_dv == -8) %>%
+  mutate(jbft_dv = as.factor(jbft_dv), ccare = as.factor(ccare)) %>%
+  ggplot(aes(x = jbft_dv, y = 100, fill = ccare, color = ccare)) + geom_col(position = "fill") +
+  labs(title = "Proportion of Parents Using Childcare by Work Type", subtitle = "-8 - Unemployed, 1 - FT, 2 - PT")
+```
+
+The above shows that usage of childcare (red filler in the charts) increases as we move from non-working to work. Unemployed / economically inactive individuals use far less childcare than those in employment, only 17.6 per cent of that group utilise childcare. Around 52% of full-time workers use childcare, and 48% of those on part-time contracts use childcare. 
+
+Referring back to the first chart in the notebook, it appears that the unemployed or non-working contribute significantly to the dragging down of childcare usage as a % overall for the UK.
+
+```{r warning=FALSE, message=FALSE, fig.show='hold', out.width="50%"}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  filter(jbft_dv == 1 | jbft_dv == 2 | jbft_dv == -8) %>%
+  mutate(jbft_dv = as.factor(jbft_dv)) %>%
+  group_by(intdaty_dv, jbft_dv) %>%
+  mutate(prop = 1 - (mean(ccare) - 1), n = n_distinct(pidp)) %>%
+  summarise(avg_prop = mean(prop)) %>% 
+  ggplot(aes(x = intdaty_dv, y = avg_prop, group = jbft_dv, color = jbft_dv)) + geom_line() +
+  labs(title = "Levels of Childcare Utilisation between Employment Status", subtitle = "-8 Non-Working, 1 - FT, 2 - PT")
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  filter(jbft_dv == 1 | jbft_dv == 2 | jbft_dv == -8) %>%
+  mutate(jbft_dv = as.factor(jbft_dv)) %>%
+  group_by(intdaty_dv, jbft_dv) %>%
+  mutate(prop = 1 - (mean(ccare) - 1), n = n_distinct(pidp)) %>%
+  summarise(avg_prop = mean(prop)) %>% 
+  ggplot(aes(x = intdaty_dv, y = avg_prop, group = jbft_dv, color = jbft_dv)) + geom_line() +
+  stat_smooth(method = "lm", formula = y ~ x, se = TRUE, linetype = "dashed", aes(color = jbft_dv)) +
+  labs(title = "Trends in Childcare Utilisation between Employment Status", subtitle = "-8 Non-Working, 1 - FT, 2 - PT")
+```
+From the above two charts we can see the evolution of childcare utilisation for the three categories over time. Non-working parents levels are flat over the period with minimal volatility. Standard errors for the trend are muted over the period. Full-time workers (green) exhibit a somewhat upward trend, although looking at the overall levels it doesn't appear too pronounced and this is mirrored by a decline in part-time childcare utilisation over the period. 
+
+We can suggest from this that there is a slight time-related component to the series that should be investigated. 
