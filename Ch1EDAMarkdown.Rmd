@@ -24,7 +24,7 @@ Importing data from GitHub and providing top-level statistics.
 
 This data is from Understanding Society (2009 - 2022) and has been merged together across waves for individual responses for a select related variables for childcare and labour market indicators.
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 usoc = read_csv("https://raw.githubusercontent.com/Centwistle/phdch1/main/usoc_individuals.csv")
 
 usoc %>% select(pidp, age_dv, sex_dv, ccare, jbhrs, jbft_dv) %>% summary(digits = 4)
@@ -223,7 +223,7 @@ While not robust - it does suggest that childcare usage allows parents to work m
 
 Below I repeat the exercise but explicitly using the full-time and part-time variables in Understanding Society.
 
-```{r warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE, fig.show='hold', out.width="50%"}
 usoc %>%
   filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
   filter(ccare == 1 | ccare == 2) %>%
@@ -239,24 +239,7 @@ usoc %>%
   filter(jbft_dv == 1 | jbft_dv == 2 | jbft_dv == -8) %>%
   mutate(jbft_dv = as.factor(jbft_dv), ccare = as.factor(ccare)) %>%
   ggplot(aes(x = jbft_dv, y = 100, fill = ccare, color = ccare)) + geom_col(position = "fill") +
-  labs(title = "Proportion of Parents Using Childcare by Work Type", subtitle = "-8 - Unemployed, 1 - FT, 2 - PT")
-```
-
-The above shows that usage of childcare (red filler in the charts) increases as we move from non-working to work. Unemployed / economically inactive individuals use far less childcare than those in employment, only 17.6 per cent of that group utilise childcare. Around 52% of full-time workers use childcare, and 48% of those on part-time contracts use childcare. 
-
-Referring back to the first chart in the notebook, it appears that the unemployed or non-working contribute significantly to the dragging down of childcare usage as a % overall for the UK.
-
-```{r warning=FALSE, message=FALSE, fig.show='hold', out.width="50%"}
-usoc %>%
-  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
-  filter(ccare == 1 | ccare == 2) %>%
-  filter(jbft_dv == 1 | jbft_dv == 2 | jbft_dv == -8) %>%
-  mutate(jbft_dv = as.factor(jbft_dv)) %>%
-  group_by(intdaty_dv, jbft_dv) %>%
-  mutate(prop = 1 - (mean(ccare) - 1), n = n_distinct(pidp)) %>%
-  summarise(avg_prop = mean(prop)) %>% 
-  ggplot(aes(x = intdaty_dv, y = avg_prop, group = jbft_dv, color = jbft_dv)) + geom_line() +
-  labs(title = "Levels of Childcare Utilisation between Employment Status", subtitle = "-8 Non-Working, 1 - FT, 2 - PT")
+  labs(title = "Proportion of Parents Using Childcare by Work Type", subtitle = "-8 - Non-Working, 1 - FT, 2 - PT")
 
 usoc %>%
   filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
@@ -270,6 +253,11 @@ usoc %>%
   stat_smooth(method = "lm", formula = y ~ x, se = TRUE, linetype = "dashed", aes(color = jbft_dv)) +
   labs(title = "Trends in Childcare Utilisation between Employment Status", subtitle = "-8 Non-Working, 1 - FT, 2 - PT")
 ```
-From the above two charts we can see the evolution of childcare utilisation for the three categories over time. Non-working parents levels are flat over the period with minimal volatility. Standard errors for the trend are muted over the period. Full-time workers (green) exhibit a somewhat upward trend, although looking at the overall levels it doesn't appear too pronounced and this is mirrored by a decline in part-time childcare utilisation over the period. 
+
+The above shows that usage of childcare (red filler in the charts) increases as we move from non-working to work. Unemployed / economically inactive individuals use far less childcare than those in employment, only 17.6 per cent of that group utilise childcare. Around 52% of full-time workers use childcare, and 48% of those on part-time contracts use childcare. 
+
+Referring back to the first chart in the notebook, it appears that the unemployed or non-working contribute significantly to the dragging down of childcare usage as a % overall for the UK.
+
+From the right-hand chart we can see the evolution of childcare utilisation for the three categories over time. Non-working parents levels are flat over the period with minimal volatility. Standard errors for the trend are muted over the period. Full-time workers (green) exhibit a somewhat upward trend, although looking at the overall levels it doesn't appear too pronounced and this is mirrored by a decline in part-time childcare utilisation over the period. 
 
 We can suggest from this that there is a slight time-related component to the series that should be investigated. 
