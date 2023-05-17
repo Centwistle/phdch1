@@ -9,7 +9,6 @@ output:
 ---
 
 # Thesis Ch1. Exploratory Data Analysis
-#### Craig Entwistle
 
 Activating required packages. 
 
@@ -24,7 +23,7 @@ Importing data from GitHub and providing top-level statistics.
 
 This data is from Understanding Society (2009 - 2022) and has been merged together across waves for individual responses for a select related variables for childcare and labour market indicators.
 
-```{r warning=FALSE, message=FALSE}
+```{r}
 usoc = read_csv("https://raw.githubusercontent.com/Centwistle/phdch1/main/usoc_individuals.csv")
 
 usoc %>% select(pidp, age_dv, sex_dv, ccare, jbhrs, jbft_dv) %>% summary(digits = 4)
@@ -223,7 +222,7 @@ While not robust - it does suggest that childcare usage allows parents to work m
 
 Below I repeat the exercise but explicitly using the full-time and part-time variables in Understanding Society.
 
-```{r warning=FALSE, message=FALSE, fig.show='hold', out.width="50%"}
+```{r warning=FALSE, message=FALSE}
 usoc %>%
   filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
   filter(ccare == 1 | ccare == 2) %>%
@@ -239,7 +238,24 @@ usoc %>%
   filter(jbft_dv == 1 | jbft_dv == 2 | jbft_dv == -8) %>%
   mutate(jbft_dv = as.factor(jbft_dv), ccare = as.factor(ccare)) %>%
   ggplot(aes(x = jbft_dv, y = 100, fill = ccare, color = ccare)) + geom_col(position = "fill") +
-  labs(title = "Proportion of Parents Using Childcare by Work Type", subtitle = "-8 - Non-Working, 1 - FT, 2 - PT")
+  labs(title = "Proportion of Parents Using Childcare by Work Type", subtitle = "-8 - Unemployed, 1 - FT, 2 - PT")
+```
+
+The above shows that usage of childcare (red filler in the charts) increases as we move from non-working to work. Unemployed / economically inactive individuals use far less childcare than those in employment, only 17.6 per cent of that group utilise childcare. Around 52% of full-time workers use childcare, and 48% of those on part-time contracts use childcare. 
+
+Referring back to the first chart in the notebook, it appears that the unemployed or non-working contribute significantly to the dragging down of childcare usage as a % overall for the UK.
+
+```{r warning=FALSE, message=FALSE, fig.show='hold', out.width="50%"}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  filter(jbft_dv == 1 | jbft_dv == 2 | jbft_dv == -8) %>%
+  mutate(jbft_dv = as.factor(jbft_dv)) %>%
+  group_by(intdaty_dv, jbft_dv) %>%
+  mutate(prop = 1 - (mean(ccare) - 1), n = n_distinct(pidp)) %>%
+  summarise(avg_prop = mean(prop)) %>% 
+  ggplot(aes(x = intdaty_dv, y = avg_prop, group = jbft_dv, color = jbft_dv)) + geom_line() +
+  labs(title = "Levels of Childcare Utilisation between Employment Status", subtitle = "-8 Non-Working, 1 - FT, 2 - PT")
 
 usoc %>%
   filter(intdaty_dv > 0 & intdaty_dv < 2021) %>%
@@ -253,11 +269,79 @@ usoc %>%
   stat_smooth(method = "lm", formula = y ~ x, se = TRUE, linetype = "dashed", aes(color = jbft_dv)) +
   labs(title = "Trends in Childcare Utilisation between Employment Status", subtitle = "-8 Non-Working, 1 - FT, 2 - PT")
 ```
-
-The above shows that usage of childcare (red filler in the charts) increases as we move from non-working to work. Unemployed / economically inactive individuals use far less childcare than those in employment, only 17.6 per cent of that group utilise childcare. Around 52% of full-time workers use childcare, and 48% of those on part-time contracts use childcare. 
-
-Referring back to the first chart in the notebook, it appears that the unemployed or non-working contribute significantly to the dragging down of childcare usage as a % overall for the UK.
-
-From the right-hand chart we can see the evolution of childcare utilisation for the three categories over time. Non-working parents levels are flat over the period with minimal volatility. Standard errors for the trend are muted over the period. Full-time workers (green) exhibit a somewhat upward trend, although looking at the overall levels it doesn't appear too pronounced and this is mirrored by a decline in part-time childcare utilisation over the period. 
+From the above two charts we can see the evolution of childcare utilisation for the three categories over time. Non-working parents levels are flat over the period with minimal volatility. Standard errors for the trend are muted over the period. Full-time workers (green) exhibit a somewhat upward trend, although looking at the overall levels it doesn't appear too pronounced and this is mirrored by a decline in part-time childcare utilisation over the period. 
 
 We can suggest from this that there is a slight time-related component to the series that should be investigated. 
+
+
+```{r warning=FALSE, message=FALSE, fig.show='hold', out.width="50%"}
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & sex_dv > 0) %>%
+  filter(ccare == 1 | ccare == 2 | ccare == -8) %>%
+  mutate(ccare = as.factor(ccare)) %>%
+  group_by(ccare) %>%
+  mutate(sex_prop = 1 - (mean(sex_dv) - 1)) %>%
+  summarise(percent_male = mean(sex_prop) * 100, percent_female = 100 - percent_male)
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & sex_dv > 0) %>%
+  filter(ccare == 1 | ccare == 2 | ccare == -8) %>%
+  mutate(ccare = as.factor(ccare), sex_dv = as.factor(sex_dv)) %>%
+  group_by(ccare) %>%
+  ggplot(aes(x = ccare, y = n_distinct(pidp), fill = sex_dv)) + geom_col() +
+  labs(title = "Sex Breakdown of Non-Parents and Childcare Users (Red - Men, Blue - Women)", subtitle = "-8 Non-Parents, 1 - Childcare, 2 - No Childcare")
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & sex_dv > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(ccare = as.factor(ccare), sex_dv = as.factor(sex_dv)) %>%
+  group_by(ccare) %>%
+  ggplot(aes(x = ccare, y = n_distinct(pidp), fill = sex_dv)) + geom_col() +
+  labs(title = "Same Again With Non-parents Removed (Red - Men, Blue - Women)", subtitle = "1 - Childcare, 2  - No Childcare")
+
+```
+
+## Childcare Utilisation Rates by Personal Characteristics
+
+NOTE: Rebuild USOC with income indicators. Highest qualification as imperfect proxy for income level. 
+
+```{r message=FALSE, warning=FALSE}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & sex_dv > 0 & hiqual_dv > 0) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(hiqual_dv = as.factor(hiqual_dv), ccare = as.factor(ccare)) %>%
+  group_by(hiqual_dv) %>%
+  ggplot(aes(x = hiqual_dv, y = 100, fill = ccare)) + geom_col(position = "fill") +
+  labs(title = "Childcare Utilisation by Highest Qualification (Highest to Lowest Qualifications)", subtitle = "1 - Degree, 2 - Other Degree, 3 - A-level, 4 - GCSE, 5 - Other, 9 - None")
+
+```
+
+Same as above but with marital status 
+
+```{r message=FALSE, warning=FALSE}
+
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & sex_dv > 0) %>%
+  filter(mastat_dv > 0 & mastat_dv < 7 | mastat_dv == 10) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(mastat_dv = as.factor(mastat_dv), ccare = as.factor(ccare)) %>%
+  group_by(mastat_dv) %>%
+  ggplot(aes(x = mastat_dv, y = 100, fill = ccare)) + geom_col(position = "fill") + 
+  labs(title = "Childcare Utilisation by Martial Status", subtitle = "1 - Single, 2 - Married, 3 - CP, 4 - Separated, 5 - Divorced, 6 - Widowed, 10 - Cohabiting.")
+
+```
+
+NOTE: Reorder the above to personal characteristics vs. labour supply indicators
+
+CCARE by job status
+```{r}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & sex_dv > 0) %>%
+  filter(jbstat > 0 & jbstat < 9) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(jbstat = as.factor(jbstat), ccare = as.factor(ccare)) %>%
+  group_by(jbstat) %>%
+  ggplot(aes(x = jbstat, y = 100, fill = ccare)) + geom_col(position = "fill") 
+```
+
