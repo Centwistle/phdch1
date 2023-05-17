@@ -41,7 +41,7 @@ usoc = usoc %>%
 
 Note to self: variable codings need tidying up for inapplicables / NAs etc. Also maybe find nicer table formatting 
 
-## Exploring Childcare Variables Within the Data
+## Headline Trends in Childcare
 
 First I look at rates of childcare utilisation across the whole of the UK for the time period covered (2009 - 2022). The code below filters out non-applicable variables (such as for where the year value was inapplicable), selects for parents only through those who answer positive **or** negative for whether they use childcare. Next it groups by year and calculates the average proportion (0 - 1) of parent responders who answered that they *did* use childcare in that given year. This is then piped into a line chart.
 
@@ -122,7 +122,7 @@ Note: large year-on-year volatility in proportion for Scotland, Wales and NI. Th
 
 This needs further investigation. Checking simple correlation of year-wise and region-wise individual sample sizes did not yield any correlation between survey sample and volatility. 
 
-## Looking at Weekly Hours Worked Responses
+## Individual Labour Market Characteristics and Childcare
 
 Now I turn to weekly hours worked within the data set - looking at data characteristics before turning to the interaction of hours worked in relation to the childcare variables. 
 
@@ -302,6 +302,21 @@ usoc %>%
 
 ```
 
+Childcare by job status. 
+
+```{r}
+usoc %>%
+  filter(intdaty_dv > 0 & intdaty_dv < 2021 & sex_dv > 0) %>%
+  filter(jbstat > 0 & jbstat < 9) %>%
+  filter(ccare == 1 | ccare == 2) %>%
+  mutate(jbstat = as.factor(jbstat), ccare = as.factor(ccare)) %>%
+  group_by(jbstat) %>%
+  ggplot(aes(x = jbstat, y = 100, fill = ccare)) + geom_col(position = "fill") +
+  labs(title = "Childcare Utilisation by Job Status", subtitle = "1 - Self-Emp, 2 - Emp, 3 - Unem, 4 - Ret., 5 - MatLeave, 6 - Care, 7 - Stud, 8 - Sick")
+
+```
+
+
 ## Childcare Utilisation Rates by Personal Characteristics
 
 NOTE: Rebuild USOC with income indicators. Highest qualification as imperfect proxy for income level. 
@@ -330,18 +345,5 @@ usoc %>%
   ggplot(aes(x = mastat_dv, y = 100, fill = ccare)) + geom_col(position = "fill") + 
   labs(title = "Childcare Utilisation by Martial Status", subtitle = "1 - Single, 2 - Married, 3 - CP, 4 - Separated, 5 - Divorced, 6 - Widowed, 10 - Cohabiting.")
 
-```
-
-NOTE: Reorder the above to personal characteristics vs. labour supply indicators
-
-CCARE by job status
-```{r}
-usoc %>%
-  filter(intdaty_dv > 0 & intdaty_dv < 2021 & sex_dv > 0) %>%
-  filter(jbstat > 0 & jbstat < 9) %>%
-  filter(ccare == 1 | ccare == 2) %>%
-  mutate(jbstat = as.factor(jbstat), ccare = as.factor(ccare)) %>%
-  group_by(jbstat) %>%
-  ggplot(aes(x = jbstat, y = 100, fill = ccare)) + geom_col(position = "fill") 
 ```
 
