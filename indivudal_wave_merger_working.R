@@ -38,12 +38,16 @@ ind = lapply(ind, function(x) x%>% select(ends_with("idp"),
                                            ends_with("_birthy"),
                                            ends_with("_sex_dv"), 
                                            ends_with("_age_dv"),
+                                           ends_with("_racel"),
                                            ends_with("_hiqual_dv"),
                                            ends_with("_mastat_dv"), 
                                            ends_with("_ccare"),
                                            ends_with("_gor_dv"),
                                            ends_with("_pn1pid"),
-                                           ends_with("_pn1pno")))
+                                           ends_with("_pn1pno"),
+                                           ends_with("_fimnnet_dv"),
+                                           ends_with("_fimnsben_dv"),
+                                           ends_with("_benbase3")))
 names(ind) = gsub("\\.tab$", "", list_ind)
 
 ## Function to remove wave specific prefixes, then applying to list of waves
