@@ -179,10 +179,10 @@ summary(base_logit_age_squared)
 # 3. Base Probits and logits with personal characteristics - rerunning with Age grouped into banding.
 
 base_probit_bands = glm(treated ~ sex_dv + AgeB1 + AgeB2 + AgeB3 + AgeB4 + relationship + ltsick + educat + inedorwork + ftemp + ptemp + fimnnet_dv,
-                        family = binomial(link = "logit"),
+                        family = binomial(link = "probit"),
                         data=usocfilt)
 base_logit_bands = glm(treated ~ sex_dv + AgeB1 + AgeB2 + AgeB3 + AgeB4 + relationship + ltsick + educat + inedorwork + ftemp + ptemp + fimnnet_dv,
-                        family = binomial(link = "probit"),
+                        family = binomial(link = "logit"),
                         data=usocfilt)
 
 summary(base_probit_bands)
@@ -309,8 +309,29 @@ stargazer(did_hrs, did_emp, did_ft, type = "html")
 
 # OUTPUTS #
 # 1. Summary Stats
+# 2. Probits and Logits
+# 3. DiD Regression Tables
+# 4. Parallel Trend Charts
+# 5. Matched Density Plots
 
-sum_stat_all = usocfilt %>% filter(jbhrs >= 0) %>% select(sex_dv, intdaty_dv, age_dv, birthy, relationship, ltsick, educat, inedorwork, ftemp, ptemp, jbhrs, usecccare) %>% st()
-sum_stat_match = usocmatch %>% filter(jbhrs >= 0) %>% select(sex_dv, intdaty_dv, age_dv, birthy, relationship, ltsick, educat, inedorwork, ftemp, ptemp, jbhrs, usecccare) %>% st()
+sum_stat_all = usocfilt %>% filter(jbhrs >= 0) %>% select(sex_dv, intdaty_dv, age_dv, birthy, relationship, ltsick, educat, inedorwork, ftemp, ptemp, jbhrs, usecccare) %>% st(file = "sum_stat_all.html")
+sum_stat_match = usocmatch %>% filter(jbhrs >= 0) %>% select(sex_dv, intdaty_dv, age_dv, birthy, relationship, ltsick, educat, inedorwork, ftemp, ptemp, jbhrs, usecccare) %>% st(file = "sum_stat_matched.html")
 
-stargazer(sum_stat_all, sum_stat_match)
+stargazer(base_logit, base_logit_age_squared, base_logit_bands, title = "Baseline Logit Results", type = "html")
+stargazer(base_probit, base_probit_age_sqaured, base_probit_bands, title = "Baseline Probit Results", type = "html")
+stargazer(did_hrs, type = "html")
+stargazer(did_emp, type = "html")
+stargazer(did_ft, type = "html")
+
+ggplot_para_trend_hrs
+ggplot_para_trend_emp
+ggplot_para_trend_ft
+
+plot(m.out, type = "density", interactive = FALSE,
+     which.xs = ~age_dv + sex_dv + relationship)
+
+plot(m.out, type = "density", interactive = FALSE,
+     which.xs = ~racel + ltsick + inedorwork)
+
+plot(m.out, type = "density", interactive = FALSE,
+     which.xs = ~nkids_dv_hhresp + agechy_dv_hhresp + fimnnet_dv)
