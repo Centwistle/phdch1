@@ -1,0 +1,349 @@
+---
+title: "The Labour Supply Impact of Moving from Part-Time to Full-Time Subsidised Childcare"
+author: "Craig Entwistle"
+date: "`r Sys.Date()`"
+output: 
+  ioslides_presentation: 
+    widescreen: yes
+    smaller: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(stargazer)
+library(vtable)
+library(knitr)
+
+usoc = read_csv("C:/Users/40344509/Documents/Ch1 Rep/usoc_analysis_ready.csv")
+usocfilt = read_csv("C:/Users/40344509/Documents/Ch1 Rep/Differentiation/images/usocfilt.csv")
+usocmatch = read_csv("C:/Users/40344509/Documents/Ch1 Rep/Differentiation/images/usocmatch.csv")
+oecd_nom = read_csv("C:/Users/40344509/Documents/Ch1 Rep/phdch1/Tables and Figures/oecdchildcaredat.csv")
+oecd_time = read_csv("C:/Users/40344509/Documents/Ch1 Rep/phdch1/Tables and Figures/OECDchildcareovertime.csv")
+base_probit = read_file("C:/Users/40344509/Documents/Ch1 Rep/phdch1/Tables and Figures/base_probit_results.html")
+base_logit = read_file("C:/Users/40344509/Documents/Ch1 Rep/phdch1/Tables and Figures/base_logit_results.html")
+
+reg_hrs = usocmatch %>% filter(intdaty_dv > 2009 & intdaty_dv <= 2021 & jbhrs >= 0)
+
+did_hrs = lm(jbhrs ~ treat_period + treated + treat_period:treated, data = reg_hrs)
+summary(did_hrs)
+
+reg_emp = usocmatch %>% 
+  filter(intdaty_dv > 2009 & intdaty_dv <= 2021) %>%
+  mutate(employed = case_when(jbstat == 1 | jbstat == 2 ~ 1),
+         employed = replace_na(employed, 0)) %>%
+  group_by(intdaty_dv) %>%
+  mutate(emp_rate = mean(employed) * 100)
+
+did_emp = lm(emp_rate ~ treat_period + treated + treat_period:treated, data = reg_emp)
+summary(did_emp)
+
+did_ft = lm(ftemp ~ treat_period + treated + treat_period:treated, data = usocmatch)
+summary(did_ft)
+
+didcomp = stargazer(did_emp, did_hrs, did_ft, type = "html")
+
+usocsum =  usocfilt %>% filter(jbhrs >= 0) %>% select(sex_dv, intdaty_dv, age_dv, birthy, relationship, ltsick, educat, inedorwork, ftemp, ptemp, jbhrs, usecccare) %>% st()
+```
+
+## What Am I Looking At?
+
+### The Summary
+
+> -   Specifically at childcare costs and how they broadly impact the labour market.
+> -   First chapter aims to look at specific policy reforms and how individual and household labour supply change in response.
+> -   I use a 2017 policy change in England that expands free entitlement of childcare for working parents from 15 hours per week to 30 hours per week.
+> -   Deploy a difference-in-difference empirical strategy to assess various labour supply responses (intensive and extensive).
+> -   Exploit age of eligibility variation arising from the policy design.
+> -   Mixed with matching methods to create control group from similar parents who miss out due to eligibility cutoffs.
+> -   Tentative (very tentative) early results suggest no impact.
+
+## Importance, i.e. Why Should You Care (About Childcare) {.smaller}
+
+### Policy Relevance
+
+::: {style="float: left; width: 40%;"}
+> -   Fair to say that childcare one of the most important domestic policy areas in UK at the moment.
+> -   Government: Major childcare-related announcements in the Spring Statement received top billing from government press releases: announcing a 'childcare revolution'.
+> -   Forms part of a broader worry around labour market tightness and sluggish employment rate recovery from Covid-19.
+> -   Additional concerns around gendered economic outcomes for mothers returning to labour market after childbirth.
+:::
+
+::: {style="float: right; width: 60%;"}
+::: centered
+![](C:/Users/40344509/Documents/Ch1%20Rep/Differentiation/images/hmtbudget.png)
+:::
+:::
+
+## Importance, i.e. Why Should You Care (About Childcare)
+
+### Media Relevance
+
+::: {style="float: left; width: 40%;"}
+> -   Government response preceded by increasing concern from the media.
+> -   Numerous reports from both tabloid and broadsheets highlighting impacts of increasing costs.
+> -   Typically framed around labour shortage issues - but again, accompanied by heavy emphasis on gendered outcomes.
+> -   Less frequently framed around business-side issues (e.g. less diverse, less dynamic composition of workforce due to gendered outcomes)
+:::
+
+::: {style="float: right; width: 60%;"}
+![](C:/Users/40344509/Documents/Ch1%20Rep/Differentiation/images/mediacollage.png)
+:::
+
+## Importance, i.e. Why Should You Care (About Childcare)
+
+### Public Relevance
+
+::: {style="float: left; width: 40%;"}
+> -   Ultimately the policy response from government and media is simply serving an existing public interest.
+> -   Google Trends search data for the topic 'childcare' (rather than a simple search term) shows it at its highest level since 2004.
+> -   It has been visibly trending upwards consistently year-on-year since 2015.
+:::
+
+::: {style="float: right; width: 60%;"}
+![](C:/Users/40344509/Documents/Ch1%20Rep/Differentiation/images/googletrend.png)
+:::
+
+## Background & Context
+
+### UK Childcare Prices in Context
+
+::: {style="float: left; width: 40%;"}
+> -   All measures of response often said to be driven by high prices for childcare. But just how high are they?
+> -   UK faces some of the highest in the OECD. Particularly for couples (3rd highest).
+:::
+
+::: {style="float: right; width: 60%;"}
+```{r message=FALSE, warning=FALSE, out.width="100%"}
+oecd_nom %>%
+  mutate(country = as.factor(LOCATION), subject = as.factor(SUBJECT)) %>%
+  mutate(Country = fct_reorder(country, Value, .fun = 'mean')) %>%
+  ggplot(aes(x = Country, y = Value, shape = factor(subject))) +
+  geom_point(aes(color = factor(subject)), size = 4) + 
+  geom_point(colour = "grey90", size = 1.5) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 1)) +
+  scale_x_discrete(labels = c("GBR" = expression(bold(GBR)), parse=TRUE)) +
+  labs(title = "Net Childcare Costs as a % of Household Income", 
+       subtitle = "Couples and Single Parents Earning 67% of Avg. Wage")
+```
+:::
+
+## Background & Context
+
+### Prices Over Time
+
+::: {style="float: left; width: 40%;"}
+> -   Despite trending downwards across the OECD since 2004, UK has stayed constant.
+> -   Chart (right) shows the evolution of prices over time for households.
+> -   UK in red, OECD in blue.
+> -   In fact, the lowest level recorded in 2008, and has increased somewhat since then.
+> -   OECD value has declined from 16% of household income in 2004 to 10% in 2022.
+> -   UK declined from 26% to 23% over same time period.
+:::
+
+::: {style="float: right; width: 60%;"}
+```{r message=FALSE, warning=FALSE, out.width="100%"}
+oecd_time = oecd_time %>%
+  mutate(country = as.factor(LOCATION))
+
+oecd_time %>%
+  ggplot(aes(x = TIME, y = Value, group = country)) + 
+  geom_line(alpha = 0.1) + 
+  geom_line(data = subset(oecd_time, country == "GBR"), color = "#F8766D", linewidth = 1.5) +
+  geom_line(data = subset(oecd_time, country == "OECD"), color = "#00BFC4", linewidth = 1.5) +
+  labs(title = "Net Childcare Costs as a % of Household Income Over Time", subtitle = "Couples Earning 67% of Average Wage", color = "Legend")
+```
+:::
+
+## Background & Context
+
+### Policy History
+
+::: {style="float: left; width: 40%;"}
+> -   Story of childcare policy in England has been one of consistent expansion over past 25 years.
+> -   Table below shows major measures implemented that affect England.
+> -   Policies have typically aimed at expanded free hours entitlement coupled with targeted support for low-earners.
+> -   Source: Adapted and updated from Economic Policy Institute - <em> The Impact of Recent Government Policies on Early Years Provision </em> (Akhal, 2019)
+:::
+
+::: {style="float: right; width: 60%;"}
+![](C:/Users/40344509/Documents/Ch1%20Rep/Differentiation/images/policytable.png)
+:::
+
+## Specific Policy
+
+> - I look specifically at the 2017 expansion of childcare entitlement from 15 hours per week to 30 hours per week.
+> - Policy intended to help parents of 3-4-year olds. 
+> - Access to policy is dependent on income (equivalent to 16 hours per week worked at national minimum wage)
+> - Age of eligibility set by cohorts (see below).
+> - ![](C:/Users/40344509/Documents/Ch1%20Rep/Differentiation/images/eligtable.png)
+> - These cutoffs for access create variation to be exploited.
+
+## Wider Literature Inconsisent on Impact on Labour Supply {.smaller}
+
+### First Forays
+
+> -   Early theoretical grounding provided by Heckman (1974)
+>     -   Adapts canonical neoclassical model of labour supply for impact of either lump sump subsidy or per-hour worked subsidy.
+>     -   Differential impacts for different categories of mother (i.e. those already working and those not)
+>     -   Generally will increase labour supply but ultimately depends on preferences (MRS).
+>     -   Also calibrates structural econometric model to estimate responses to various subsidy levels.
+
+### Subsequent Findings
+
+> -   Raft of structurally estimated econometric models during the 1980s and 1990s.
+> -   Wide range of labour supply elasticities produced in US.
+>     - On extensive margin, ranges from -0.2 (Connolly, 1992) to -0.92 (Anderson and Levine, 1999).
+>     - On intensive margin, ranges from -0.024 (Ribar, 1995) to -0.78 (Averett, Peters and Waldman, 1997)
+
+## Wider Literature Inconsisent on Impact on Labour Supply {.smaller}
+### Later Findings
+
+> - After Credibility Revolution during mid-90s - present, emphasis shifts to causal inference methods.
+> - Typically framed around specific policy interventions and quasi-experimental design:
+>     - Havnes & Mogestad (2011) analyse long-run impacts from policy interventions in Norway. Find no net increase in maternal labour supply.
+>     - Nollenberger & Rodriguez-Planas (2015) look into early '90s reforms in Spain. Find +2.1% extensive margin impact, signif at 10% level.
+>     - Germany: Bauernschuster & Schlotter (2015) find free kindergarten raised participation by 6 per cent. 
+>     - Germany: Gathmann & Sass (2018) find *introduction* of costs to generate no labour supply response from mothers.
+>     - UK: Brewer et al. (2021) estimate movement from part-time to full-time childcare (using minimum schooling age) increases participation by 2.1%.
+> - Inconsistency in labour supply findings mirrored by inconsistency in second-order impacts (crowding out, deadweight loss etc.)
+
+## Data Used
+### Description
+> - I utilise the special licence version of *Understanding Society* (USOC). This is an individual and household longtiduinal survey in the UK covering the years 2009 - 2022. 
+> - This dataset includes a comprehensive and unparalleled range of variables relating to personal characteristics, economic and labour market data, as well as childcare specific information.
+> - The advantages of using USOC as a datasource is the fact that it removes the need to link or merge with other data sources and potentially lose accuracy of the data.
+
+## Data Used 
+### Data Overview
+
+```{r}
+usocfilt %>% filter(jbhrs >= 0) %>% select(sex_dv, intdaty_dv, age_dv, birthy, relationship, ltsick, educat, inedorwork, ftemp, ptemp, jbhrs, usecccare) %>% st(out = 'kable') %>% kable_minimal("hover", full_width = T, position = "float_right")
+```
+
+
+> - Above shows the summary statistics for the overall data set used after initial sampling decisions taken.
+> - Contains key personal characteristics as well as economic outcomes and childcare-related variables.
+
+## Empirical Strategy
+### Treatment 
+
+> - I identify those treated as those eligible for the free childcare based on the criteria set out by HMG.
+> - Unfortunately USOC does not contain any specific variables that identify whether individual uses free childcare policy so identification rests on identifying those eligible and impact on aggregate (limitation of design).
+>     - i.e. testing the impact of the policy rather than testing specifically on those who use policy.
+> - Replication code for treatment generation in "Analysis_File.R"
+> - Identifies treated individuals based on interaction between:
+>     - Child date of birth (requires month of birth).
+>     - Date of observation being recorded.
+>     - Eligibility cohort.
+>     - Parental household income.
+> - Code a dummy variable for those treated vs. those not.
+
+## Empirical Strategy
+### Baseline Regressions
+
+> - As an initial diagnostic, I check the degree to which those identified differ from the wider population.
+> - I run logit and probit regressions to understand the degree of difference.
+> - Results largely as would be expected.
+> - Those treated exhibit:
+>     - Strong age effects (probability of treatment increases with age before sharply dropping)
+>     - Strong likelihood of being in a relationship.
+>     - Less likely to have long-term illness.
+>     - Somewhat more likely to be educated (A-level and above).
+>     - Less likely to be in full-time education or work.
+>     - Log income does not seem to have any impact at all.
+
+## Empirical Strategy - Logit Results
+<center>
+![](C:/Users/40344509/Documents/Ch1 Rep/Differentiation/images/baselinelogit.png)
+</center>
+
+## Empirical Strategy - Probit Results
+
+<center>
+![](C:/Users/40344509/Documents/Ch1 Rep/Differentiation/images/baselineprobit.png)
+
+## Empirical Strategy - Matching
+
+> - Given that there exist substantial differences (possibility for self-selection into treatment) then necessary to balance treated with adequate control group.
+> - I opt for matching methods to generate a sub-sample as close to the treated as possible.
+> - Use R's *'MatchIt'* package to run through several matching methods. 
+> - Settle on Nearest Neighbour with resampling (i.e. allowing more than one observation to be assigned as a control).
+> - Match on a variety of personal characteristics - leaving economic variables to vary between groups.
+> - Results for matching are good - with minimal distance between treated and controls.
+
+<center> ![](C:/Users/40344509/Documents/Ch1 Rep/Tables and Figures/matched_data_summary.png) </center>
+
+## Empirical Strategy - Matching Summary Stats
+
+```{r}
+usocmatch %>% filter(jbstat > 0) %>% select(treated, sex_dv, intdaty_dv, age_dv, birthy, relationship, ltsick, educat, inedorwork, ftemp, ptemp, jbhrs, usecccare) %>% st(out = 'kable') %>% kable_minimal("hover", full_width = T, position = "float_right")
+```
+
+## Empirical Strategy - DiD Specification
+
+> - Following in the steps of commonly used methods in the literature I opt for a difference-in-difference strategy to estimate the labour supply response.
+> - Policy impact, i.e. average treatment effect, is determined by the interaction of the treatment variable with the treatment period.
+> - I code the treatment period as a dummy observation for any observation date ocurring after 1st September 2017 - the date the policy was enacted.
+> - Regression specification takes the form:
+> - <center> ![](C:/Users/40344509/Documents/Ch1 Rep/Differentiation/images/did.png) </center>
+> - With the 𝛿 capturing the policy response.
+> - The dependent variable *Y* in this case is either the extensive margin (employment), intensive margin (hours worked) or a measure indicator the ratio of full-time workers out of all those employed.
+
+## Results 
+### Initial Findings
+
+```{r, fig.align='center'}
+kable(didcomp, escape = F) %>% kable_minimal("hover", full_width = T, position = "center")
+```
+
+## Results
+### Discussion
+
+> - In all 3 cases there does not appear to have been any response to the 2017 expansion.
+> - Coefficient values in all cases are low.
+> - No statistically significant effect whatsoever.
+> - While early stages - this is comfortingly not a complete outlier in comparison to other estimates.
+> - Nevertheless, does pose questions why there are differences between these findings and those of Brewer et al. (2021) who also look at UK-context *and* at change between PT and FT care but do find a response.
+> - What could be responsible? What would next steps be?
+
+## Conclusion and Next Steps
+### Critical Reflection on Results
+> - These are evidently a very tentative first-pass of results. 
+> - Difference between these results and Brewer et al. (2021) could be driven by personal characteristics of those treated.
+>     - In their case looking at parents of children entering primary school.
+>     - In this case looking at parents of 3-year olds. 
+>     - Descriptive data does suggest a secular trend towards more working as children age, but probably not enough to explain *all* of the difference here.
+
+### Practical Next Steps
+> - Lots of room for QA and robustness checks.
+>      - Limited time to conduct sweeps for errors. Some obvious ones already identified (use 2010 rather than 2009 as beginning date).
+> - Robustness checks (placebo effects, pre-trends etc.)
+> - Expanding variables of interest to second-order effects.
+>     - Crowding out, distributional impacts etc.
+
+## Conclusion and Next Steps (cont.)
+### Methodological Concerns
+
+> - Large literature over the past 2 years relating to DiD.
+> - Heterogenous treatment effects.
+> - Heterogenous treatment groups.
+> - Still considering most appropriate estimator from that literature to incorporate.
+
+### Still...
+
+> - More than likely that I've omitted some concerns or not thought of things.
+> - Very open to suggestions!
+
+## ...And finally...
+### Plans for 2nd chapter
+
+> - Already ramping up plans for primary data collection.
+> - Intending to webscrape childcare.co.uk for pricing data.
+> - Would present a wealth of options for further analysis.
+>      - e.g. impact of staff-to-child ratios relaxing in September 2023.
+>      - e.g. impact of further expansion in 2024.
+> - Unknown number of profiles on website - but estimated sample size per 24 hour webcrawl would result in ~17,000 observations.
+
+<center> ![](C:/Users/40344509/Documents/Ch1 Rep/Differentiation/images/childcare.png) </center>
